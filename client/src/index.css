@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    font-family: 'Lexend', ui-sans-serif, system-ui, sans-serif;
+    background-color: #faf9fd;
+    color: #1a1b1e;
+  }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-family: 'Material Symbols Outlined';
+  }
+}
+
+@layer components {
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+  .btn-primary {
+    @apply bg-primary text-white font-bold rounded-lg transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] shadow-sm;
+  }
+  .btn-secondary {
+    @apply border-2 border-primary text-primary font-semibold rounded-lg transition-all duration-300 hover:bg-primary-fixed/30;
+  }
+  .custom-dashed {
+    border: 2px dashed #c2c6d5;
+    border-radius: 1rem;
+  }
+  .flashcard-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flashcard-flipped {
+    transform: rotateY(180deg);
+  }
+  .flashcard-back {
+    transform: rotateY(180deg);
+  }
+  .flashcard-container {
+    perspective: 1500px;
+  }
+  .flashcard-inner {
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+}
+
+/* Hide scrollbar on subject chips row */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
