@@ -143,42 +143,86 @@ function safeParseJsonArray(str) {
 async function callGemini(chunk, depth, targetCount) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  const modelsToTry = [
+    process.env.GEMINI_MODEL,
+    'gemini-2.0-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+  ].filter(Boolean);
+
   const payload = {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [{ role: 'user', parts: [{ text: buildUserPrompt(chunk, depth, targetCount) }] }],
     generationConfig: { temperature: 0.4, maxOutputTokens: 2048, responseMimeType: 'application/json' },
   };
-  const { data } = await axios.post(url, payload, { timeout: 60000 });
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return safeParseJsonArray(text);
+
+  for (const model of modelsToTry) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+    try {
+      const { data } = await axios.post(url, payload, { timeout: 60000 });
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const cards = safeParseJsonArray(text);
+      if (cards.length) return cards;
+    } catch (err) {
+      // If one model alias is unavailable for this key/account, try the next.
+      const status = err?.response?.status;
+      if (status !== 404) throw err;
+    }
+  }
+
+  return [];
 }
 
 async function callOpenAI(chunk, depth, targetCount) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-  const { data } = await axios.post(
-    'https://api.openai.com/v1/chat/completions',
-    {
-      model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: buildUserPrompt(chunk, depth, targetCount) },
-      ],
-      temperature: 0.2,
-    },
-    { headers: { Authorization: `Bearer ${key}` }, timeout: 60000 }
-  );
-  const raw = data?.choices?.[0]?.message?.content || '';
-  // Some models may still wrap in an object.
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return normalizeCards(parsed);
-    if (Array.isArray(parsed.cards)) return normalizeCards(parsed.cards);
-    if (Array.isArray(parsed.flashcards)) return normalizeCards(parsed.flashcards);
-  } catch (e) {}
-  return safeParseJsonArray(raw);
+  const primaryModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const fallbackModels = String(process.env.OPENAI_MODEL_FALLBACKS || '')
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
+  const modelsToTry = [primaryModel, ...fallbackModels];
+  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  const endpoint = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+  for (const model of modelsToTry) {
+    try {
+      const { data } = await axios.post(
+        endpoint,
+        {
+          model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: buildUserPrompt(chunk, depth, targetCount) },
+          ],
+          temperature: 0.2,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 60000,
+        }
+      );
+      const raw = data?.choices?.[0]?.message?.content || '';
+      // Some models may still wrap in an object.
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return normalizeCards(parsed);
+        if (Array.isArray(parsed.cards)) return normalizeCards(parsed.cards);
+        if (Array.isArray(parsed.flashcards)) return normalizeCards(parsed.flashcards);
+      } catch (e) {}
+      const cards = safeParseJsonArray(raw);
+      if (cards.length) return cards;
+    } catch (err) {
+      const status = err?.response?.status;
+      // Free providers/models are often temporarily rate-limited; try next.
+      if (status === 429 || status === 404) continue;
+      throw err;
+    }
+  }
+
+  return [];
 }
 
 async function callAnthropic(chunk, depth, targetCount) {
@@ -209,6 +253,17 @@ function hasAiProviderConfigured() {
   return Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY);
 }
 
+function extractProviderErrorMessage(err) {
+  if (!err) return '';
+  const status = err?.response?.status;
+  const apiMsg =
+    err?.response?.data?.error?.message ||
+    err?.response?.data?.message ||
+    err?.message;
+  if (!status) return apiMsg || '';
+  return `AI provider returned ${status}${apiMsg ? `: ${apiMsg}` : ''}`;
+}
+
 async function generateCardsFromText(fullText, depth = 'balanced') {
   if (!hasAiProviderConfigured()) {
     throw new Error('No AI provider configured. Add OPENAI_API_KEY (preferred) in server/.env');
@@ -220,6 +275,7 @@ async function generateCardsFromText(fullText, depth = 'balanced') {
   const allCards = [];
   const maxChunks = Math.min(chunks.length, 10); // safety cap to control AI cost
   let failedChunks = 0;
+  let lastProviderError = '';
 
   for (let i = 0; i < maxChunks; i++) {
     if (allCards.length >= targetTotalCards) break;
@@ -232,6 +288,8 @@ async function generateCardsFromText(fullText, depth = 'balanced') {
       if (!cards || !cards.length) cards = await callAnthropic(chunk, depth, remaining);
     } catch (err) {
       console.error(`AI call failed on chunk ${i}:`, err.message);
+      const providerMsg = extractProviderErrorMessage(err);
+      if (providerMsg) lastProviderError = providerMsg;
     }
     cards = filterCardsGroundedInChunk(cards, chunk);
     if (!cards || !cards.length) {
@@ -251,6 +309,7 @@ async function generateCardsFromText(fullText, depth = 'balanced') {
   });
 
   if (!deduped.length) {
+    if (lastProviderError) throw new Error(lastProviderError);
     throw new Error('AI did not return valid teacher-style cards. Check API key/model and retry.');
   }
 
