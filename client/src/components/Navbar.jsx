@@ -1,11 +1,13 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useRef, useEffect } from 'react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -15,6 +17,10 @@ export default function Navbar() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   const linkClasses = ({ isActive }) =>
     isActive
@@ -61,14 +67,24 @@ export default function Navbar() {
           </>
         ) : (
           <>
-            <button className="p-2 rounded-full hover:bg-slate-100 transition-colors relative" title="Notifications">
+            <button
+              onClick={() => setMobileNavOpen((v) => !v)}
+              className="md:hidden p-2 rounded-full hover:bg-slate-100 transition-colors"
+              title="Menu"
+              aria-label="Toggle navigation menu"
+            >
+              <span className="material-symbols-outlined text-slate-600">
+                {mobileNavOpen ? 'close' : 'menu'}
+              </span>
+            </button>
+            <button className="hidden md:inline-flex p-2 rounded-full hover:bg-slate-100 transition-colors relative" title="Notifications">
               <span className="material-symbols-outlined text-slate-500">notifications</span>
               <span className="absolute top-2 right-2 w-2 h-2 bg-accent-red rounded-full border-2 border-white" />
             </button>
-            <Link to="/settings" className="p-2 rounded-full hover:bg-slate-100 transition-colors" title="Settings">
+            <Link to="/settings" className="hidden md:inline-flex p-2 rounded-full hover:bg-slate-100 transition-colors" title="Settings">
               <span className="material-symbols-outlined text-slate-500">settings</span>
             </Link>
-            <div className="relative" ref={menuRef}>
+            <div className="relative hidden md:block" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen((v) => !v)}
                 className="w-9 h-9 rounded-full bg-primary-fixed overflow-hidden flex items-center justify-center text-primary font-bold"
@@ -109,6 +125,41 @@ export default function Navbar() {
           </>
         )}
       </div>
+
+      {user && mobileNavOpen && (
+        <div className="md:hidden absolute top-[64px] left-0 right-0 bg-white border-b border-border-subtle shadow-sm px-6 py-3">
+          <div className="flex flex-col gap-3">
+            <NavLink to="/decks" className={linkClasses}>My Decks</NavLink>
+            <NavLink to="/explore" className={linkClasses}>Explore</NavLink>
+            <NavLink to="/analytics" className={linkClasses}>Progress</NavLink>
+            <NavLink to="/create" className={linkClasses}>Create</NavLink>
+            <button
+              onClick={() => setMobileNavOpen(false)}
+              className="w-full text-left text-slate-600 hover:text-primary transition-colors font-medium text-sm tracking-tight"
+            >
+              Notifications
+            </button>
+            <button
+              onClick={() => { setMobileNavOpen(false); navigate('/settings'); }}
+              className="w-full text-left text-slate-600 hover:text-primary transition-colors font-medium text-sm tracking-tight"
+            >
+              Settings
+            </button>
+            <button
+              onClick={() => { setMobileNavOpen(false); navigate('/settings'); }}
+              className="w-full text-left text-slate-600 hover:text-primary transition-colors font-medium text-sm tracking-tight"
+            >
+              Profile
+            </button>
+            <button
+              onClick={() => { setMobileNavOpen(false); logout(); navigate('/'); }}
+              className="w-full text-left text-error font-medium text-sm tracking-tight"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
