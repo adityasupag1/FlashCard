@@ -27,6 +27,8 @@ Rules:
    - 2-5 sentences
    - explain reasoning, not just the final fact
    - for process/problem cards, include short stepwise logic
+10. Every question heading must include at least one concrete term (topic, formula, concept name, event, or keyword) that appears in the material.
+11. Never use generic headings like "Summarize this concept" or "Explain this topic" without a concrete concept name.
 
 Return ONLY valid JSON using this exact schema:
 [
@@ -51,7 +53,48 @@ MATERIAL:
 ${chunk}
 
 Return JSON array only with fields: front, back, hint, topic.
-Front must be a question heading. Back must be a brief, detailed teacher-style explanation.`;
+Front must be a question heading, include concrete terms from MATERIAL, and must not be generic.
+Back must be a brief, detailed teacher-style explanation grounded in MATERIAL only.`;
+}
+
+const STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'about', 'what', 'when', 'where', 'which',
+  'your', 'their', 'there', 'have', 'will', 'would', 'could', 'should', 'each', 'card', 'cards', 'question',
+  'answer', 'explain', 'concept', 'topic', 'material', 'study', 'using', 'used', 'into', 'over', 'under',
+  'than', 'then', 'they', 'them', 'been', 'being', 'also', 'just', 'only', 'more', 'most', 'some', 'many',
+  'does', 'done', 'make', 'made', 'like', 'such', 'very', 'much', 'across', 'through', 'between'
+]);
+
+function tokenize(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 4 && !STOPWORDS.has(t));
+}
+
+function isGenericFront(front) {
+  const s = String(front || '').toLowerCase();
+  const banned = [
+    'summarize this concept',
+    'explain this concept',
+    'explain this topic',
+    'what is this concept',
+    'describe this topic',
+    'what is discussed in',
+  ];
+  return banned.some((p) => s.includes(p));
+}
+
+function filterCardsGroundedInChunk(cards, chunk) {
+  if (!Array.isArray(cards) || !cards.length) return [];
+  const chunkTokens = new Set(tokenize(chunk));
+  return cards.filter((c) => {
+    if (!c?.front || isGenericFront(c.front)) return false;
+    const frontTokens = tokenize(c.front);
+    const overlap = frontTokens.filter((t) => chunkTokens.has(t));
+    return overlap.length >= 1;
+  });
 }
 
 function normalizeCards(cards) {
@@ -190,6 +233,7 @@ async function generateCardsFromText(fullText, depth = 'balanced') {
     } catch (err) {
       console.error(`AI call failed on chunk ${i}:`, err.message);
     }
+    cards = filterCardsGroundedInChunk(cards, chunk);
     if (!cards || !cards.length) {
       failedChunks += 1;
       continue;
