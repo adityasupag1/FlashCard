@@ -16,12 +16,26 @@ export default function SessionComplete() {
   const correct = session.correctCount || 0;
   const accuracy = total ? Math.round((correct / total) * 100) : 0;
   const minutes = Math.max(1, Math.round((session.durationSeconds || 0) / 60));
+  const celebrationMessage = accuracy >= 85
+    ? 'Outstanding recall today. Keep the streak alive!'
+    : accuracy >= 65
+      ? 'Strong session. You are building durable memory.'
+      : 'Good effort. Review again tomorrow for a stronger rebound.';
+  const streakMilestone = [3, 7, 14, 30].includes(streak) ? ` ${streak}-day streak milestone!` : '';
 
   return (
     <div className="bg-bg-green min-h-screen">
       <Navbar />
       <div className="max-w-screen-md mx-auto px-6 py-12">
         <div className="bg-white rounded-3xl shadow-card-hover p-8 md:p-12 text-center border border-border-subtle animate-reveal-up">
+          <div className="confetti-wrap" aria-hidden="true">
+            <span className="confetti-dot" />
+            <span className="confetti-dot" />
+            <span className="confetti-dot" />
+            <span className="confetti-dot" />
+            <span className="confetti-dot" />
+            <span className="confetti-dot" />
+          </div>
           <div className="w-20 h-20 bg-bg-green rounded-full mx-auto flex items-center justify-center mb-6">
             <span className="material-symbols-outlined text-tertiary text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               celebration
@@ -30,6 +44,10 @@ export default function SessionComplete() {
           <h1 className="text-h2-section text-on-surface mb-2">Session complete!</h1>
           <p className="text-on-surface-variant mb-8">
             Great work on <span className="font-bold text-on-surface">{deck?.title || 'your deck'}</span>.
+          </p>
+          <p className="text-sm font-semibold text-primary mb-8">
+            {celebrationMessage}
+            {streakMilestone}
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

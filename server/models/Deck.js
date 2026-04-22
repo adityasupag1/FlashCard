@@ -15,6 +15,8 @@ const deckSchema = new mongoose.Schema(
     cardType: { type: String, enum: ['qa', 'cloze', 'mixed'], default: 'qa' },
     isPinned: { type: Boolean, default: false },
     isPublic: { type: Boolean, default: false },
+    lastOpenedAt: { type: Date, default: null, index: true },
+    lastStudiedAt: { type: Date, default: null, index: true },
     // Quick counts cached — updated whenever cards change
     cardCount: { type: Number, default: 0 },
     newCount: { type: Number, default: 0 },

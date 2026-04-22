@@ -32,9 +32,9 @@ function applySM2(card, gradeName) {
 
   // Status progression
   let status = 'learning';
-  if (repetitions === 0) status = 'learning';
-  else if (interval >= 21 && repetitions >= 4) status = 'mastered';
-  else if (repetitions === 0 && lapses === 0) status = 'new';
+  if (repetitions === 0 && lapses === 0) status = 'new';
+  else if (interval >= 7 && repetitions >= 3) status = 'mastered';
+  else status = 'learning';
 
   // Compute next due date
   const dueDate = new Date();

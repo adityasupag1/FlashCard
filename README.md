@@ -2,7 +2,7 @@
 
 A full MERN-stack implementation of the **FlashDeck** professional design — an AI-powered platform that turns PDFs into spaced-repetition flashcard decks.
 
-Built with **MongoDB, Express, React, Node.js**, plus Tailwind CSS, Vite, Recharts, and the SM-2 spaced repetition algorithm. Supports Google **Gemini**, **OpenAI**, or **Anthropic** for card generation (auto-detects whichever key you provide).
+Built with **MongoDB, Express, React, Node.js**, plus Tailwind CSS, Vite, Recharts, and the SM-2 spaced repetition algorithm. Supports **OpenAI**, Google **Gemini**, or **Anthropic** for card generation (auto-detects whichever key you provide, with OpenAI first).
 
 ![Tech Stack](https://img.shields.io/badge/stack-MERN-0058bd)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -78,7 +78,7 @@ flashdeck/
 - Node.js 18+
 - npm 9+
 - MongoDB (local or Atlas)
-- One AI API key (Gemini, OpenAI, or Anthropic)
+- One AI API key (OpenAI, Gemini, or Anthropic)
 
 ### 2. Clone & Install
 
@@ -105,7 +105,8 @@ MONGO_URI=mongodb://127.0.0.1:27017/flashdeck
 JWT_SECRET=your_long_random_secret
 JWT_EXPIRE=30d
 
-GEMINI_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-4o-mini
 CLIENT_URL=http://localhost:5173
 ```
 
@@ -204,7 +205,7 @@ NODE_ENV=production npm start
 Set environment variables:
 - MONGO_URI
 - JWT_SECRET
-- GEMINI_API_KEY
+- OPENAI_API_KEY
 
 ---
 

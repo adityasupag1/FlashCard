@@ -4,6 +4,13 @@ const Deck = require('../models/Deck');
 const Session = require('../models/Session');
 const User = require('../models/User');
 
+function toLocalDateKey(dateLike) {
+  const d = new Date(dateLike);
+  if (Number.isNaN(d.getTime())) return null;
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
 // GET /api/stats/overview
 const overview = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -37,27 +44,33 @@ const activity = asyncHandler(async (req, res) => {
 
   const sessions = await Session.find({
     user: userId,
-    startedAt: { $gte: start },
-  }).sort({ startedAt: 1 });
+    $or: [{ startedAt: { $gte: start } }, { createdAt: { $gte: start } }],
+  }).sort({ startedAt: 1, createdAt: 1 });
 
   // Build 30-day array
   const days = [];
+  const dayMap = new Map();
   for (let i = 0; i < 30; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i);
-    days.push({
-      date: d.toISOString().slice(0, 10),
+    const dateKey = toLocalDateKey(d);
+    const row = {
+      date: dateKey,
       reviews: 0,
       correct: 0,
       minutes: 0,
-    });
+    };
+    days.push(row);
+    dayMap.set(dateKey, row);
   }
   sessions.forEach((s) => {
-    const key = new Date(s.startedAt).toISOString().slice(0, 10);
-    const day = days.find((d) => d.date === key);
+    const key = toLocalDateKey(s.startedAt || s.createdAt);
+    const day = dayMap.get(key);
     if (!day) return;
-    day.reviews += s.cardsReviewed || 0;
-    day.correct += s.correctCount || 0;
+    const reviewedFromGrades = (s.againCount || 0) + (s.hardCount || 0) + (s.goodCount || 0) + (s.easyCount || 0);
+    const correctedFromGrades = (s.hardCount || 0) + (s.goodCount || 0) + (s.easyCount || 0);
+    day.reviews += (s.cardsReviewed || reviewedFromGrades || 0);
+    day.correct += (s.correctCount || correctedFromGrades || 0);
     day.minutes += Math.round((s.durationSeconds || 0) / 60);
   });
 

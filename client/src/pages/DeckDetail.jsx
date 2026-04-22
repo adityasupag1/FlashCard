@@ -87,6 +87,16 @@ export default function DeckDetail() {
     }
   };
 
+  const togglePublic = async () => {
+    try {
+      const { data } = await api.put(`/decks/${deck._id}`, { isPublic: !deck.isPublic });
+      setDeck(data);
+      toast.success(data.isPublic ? 'Deck is now public' : 'Deck is now private');
+    } catch {
+      toast.error('Failed to update visibility');
+    }
+  };
+
   const deleteDeck = async () => {
     if (!confirm(`Delete "${deck.title}" and all ${cards.length} cards? This cannot be undone.`)) return;
     try {
@@ -184,6 +194,17 @@ export default function DeckDetail() {
                 title={deck.isPinned ? 'Unpin' : 'Pin'}
               >
                 <span className="material-symbols-outlined">{deck.isPinned ? 'keep_off' : 'push_pin'}</span>
+              </button>
+              <button
+                onClick={togglePublic}
+                className={`px-4 py-3 border border-border-subtle text-on-surface-variant rounded-lg transition-colors ${
+                  deck.isPublic
+                    ? 'bg-bg-green hover:bg-bg-green/70'
+                    : 'bg-white hover:bg-surface-container-low'
+                }`}
+                title={deck.isPublic ? 'Make private' : 'Make public'}
+              >
+                <span className="material-symbols-outlined">{deck.isPublic ? 'public_off' : 'public'}</span>
               </button>
               <button
                 onClick={deleteDeck}

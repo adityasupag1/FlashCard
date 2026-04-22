@@ -64,3 +64,32 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.confetti-wrap {
+  position: relative;
+  width: 100%;
+  height: 0;
+}
+
+.confetti-dot {
+  position: absolute;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  opacity: 0;
+  animation: confetti-fall 1400ms ease-out forwards;
+}
+
+.confetti-dot:nth-child(1) { left: 10%; background: #0058bd; animation-delay: 40ms; }
+.confetti-dot:nth-child(2) { left: 25%; background: #ea4335; animation-delay: 120ms; }
+.confetti-dot:nth-child(3) { left: 40%; background: #795900; animation-delay: 0ms; }
+.confetti-dot:nth-child(4) { left: 60%; background: #006b2b; animation-delay: 80ms; }
+.confetti-dot:nth-child(5) { left: 75%; background: #a855f7; animation-delay: 160ms; }
+.confetti-dot:nth-child(6) { left: 90%; background: #2771df; animation-delay: 220ms; }
+
+@keyframes confetti-fall {
+  0% { transform: translateY(0) scale(0.8); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(72px) rotate(80deg) scale(1); opacity: 0; }
+}

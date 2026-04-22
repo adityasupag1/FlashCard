@@ -8,6 +8,12 @@ import toast from 'react-hot-toast';
 
 const SUBJECTS = ['All', 'Math', 'Science', 'History', 'Medicine', 'Language', 'CS', 'Other'];
 
+function getLastActivity(deck) {
+  const candidates = [deck.lastStudiedAt, deck.lastOpenedAt, deck.updatedAt].filter(Boolean);
+  if (!candidates.length) return 0;
+  return Math.max(...candidates.map((d) => new Date(d).getTime()));
+}
+
 export default function MyDecks() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -37,15 +43,27 @@ export default function MyDecks() {
   useEffect(() => { fetchAll(); }, []);
 
   const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
     let list = decks.filter((d) =>
       (subject === 'All' || d.subject === subject) &&
-      (query === '' || d.title.toLowerCase().includes(query.toLowerCase()))
+      (
+        q === '' ||
+        `${d.title || ''} ${d.description || ''} ${d.sourceFileName || ''} ${d.subject || ''}`
+          .toLowerCase()
+          .includes(q)
+      )
     );
-    if (sort === 'recent') list = [...list].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    if (sort === 'recent') list = [...list].sort((a, b) => getLastActivity(b) - getLastActivity(a));
     if (sort === 'mastery') list = [...list].sort((a, b) => (b.masteredCount || 0) - (a.masteredCount || 0));
     if (sort === 'alpha') list = [...list].sort((a, b) => a.title.localeCompare(b.title));
     return list;
   }, [decks, query, subject, sort]);
+
+  const continueDeck = useMemo(() => {
+    if (!decks.length) return null;
+    const sorted = [...decks].sort((a, b) => getLastActivity(b) - getLastActivity(a));
+    return sorted[0] || null;
+  }, [decks]);
 
   const pinned = filtered.filter((d) => d.isPinned);
   const others = filtered.filter((d) => !d.isPinned);
@@ -169,6 +187,35 @@ export default function MyDecks() {
           <EmptyState onCreate={() => nav('/create')} />
         ) : (
           <>
+            {continueDeck && (
+              <section className="mb-8">
+                <div className="bg-white rounded-xl border border-border-subtle shadow-sm p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Pick up where you left off</p>
+                    <h2 className="text-lg font-bold text-on-surface">{continueDeck.title}</h2>
+                    <p className="text-sm text-on-surface-variant mt-1">
+                      {continueDeck.dueCount > 0
+                        ? `${continueDeck.dueCount} cards due now`
+                        : `${continueDeck.cardCount || 0} cards ready to revisit`}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      to={`/decks/${continueDeck._id}`}
+                      className="px-4 py-2 rounded-lg border border-border-subtle text-on-surface-variant font-bold hover:bg-surface-container-low"
+                    >
+                      Open deck
+                    </Link>
+                    <Link
+                      to={`/study/${continueDeck._id}`}
+                      className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:scale-[1.02] transition-transform"
+                    >
+                      Continue study
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            )}
             {pinned.length > 0 && (
               <section className="mb-12 animate-reveal-up">
                 <div className="flex items-center gap-2 mb-4">

@@ -25,7 +25,14 @@ const listDecks = asyncHandler(async (req, res) => {
   const { q, subject } = req.query;
   const filter = { user: req.user._id };
   if (subject && subject !== 'All') filter.subject = subject;
-  if (q) filter.title = { $regex: q, $options: 'i' };
+  if (q) {
+    filter.$or = [
+      { title: { $regex: q, $options: 'i' } },
+      { description: { $regex: q, $options: 'i' } },
+      { sourceFileName: { $regex: q, $options: 'i' } },
+      { subject: { $regex: q, $options: 'i' } },
+    ];
+  }
   const decks = await Deck.find(filter).sort({ isPinned: -1, updatedAt: -1 });
 
   // For each deck, compute cards due today
@@ -60,6 +67,10 @@ const getDeck = asyncHandler(async (req, res) => {
   if (deck.user.toString() !== req.user._id.toString() && !deck.isPublic) {
     res.status(403);
     throw new Error('Not allowed');
+  }
+  if (deck.user.toString() === req.user._id.toString()) {
+    deck.lastOpenedAt = new Date();
+    await deck.save();
   }
   const cards = await Card.find({ deck: deck._id }).sort({ createdAt: 1 });
   const dueCount = await Card.countDocuments({ deck: deck._id, dueDate: { $lte: new Date() } });
