@@ -126,10 +126,12 @@ const generateDeck = asyncHandler(async (req, res) => {
   }
 
   let generated = [];
+  let generationError = '';
   try {
     generated = await generateCardsFromText(parsed.text, depth);
   } catch (err) {
     console.error('AI generation error:', err.message);
+    generationError = err.message || 'Unknown AI generation error';
   } finally {
     // Always clean up the uploaded file — we don't keep PDFs
     fs.unlink(file.path, () => {});
@@ -137,7 +139,7 @@ const generateDeck = asyncHandler(async (req, res) => {
 
   if (!generated.length) {
     res.status(502);
-    throw new Error('AI could not generate cards. Check your API key and try again.');
+    throw new Error(generationError || 'AI could not generate cards. Check your API key and try again.');
   }
 
   const deck = await Deck.create({
